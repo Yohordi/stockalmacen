@@ -77,10 +77,11 @@ def vista_admin(df):
             nuevo["CATEGORIA"] = st.text_input("Categoría")
             nuevo["UNM"] = st.text_input("Unidad de medida")
             nuevo["LOTE"] = st.text_input("Lote")
-            
-            # Campo de fecha de caducidad
-            nuevo["CADUCIDAD"] = st.date_input("Caducidad").strftime("%d-%m-%Y")
-            
+
+            # Cambiar el formato del campo de fecha
+            caducidad_default = datetime.today().date()
+            nuevo["CADUCIDAD"] = st.date_input("Caducidad", value=caducidad_default)
+
             nuevo["STOCK"] = st.number_input("Stock", min_value=0, step=1)
 
             submitted = st.form_submit_button("Agregar")
@@ -91,7 +92,8 @@ def vista_admin(df):
                     df = pd.concat([df, pd.DataFrame([nuevo])], ignore_index=True)
                     guardar_datos(df)
                     st.success("Producto agregado correctamente.")
-                    st.experimental_rerun()
+                    # Eliminar st.experimental_rerun() para evitar el error
+                    return  # No se hace un rerun, pero se puede actualizar los datos sin reiniciar
 
     st.markdown("### ✏️ Editar / ❌ Eliminar productos existentes")
 
@@ -100,14 +102,8 @@ def vista_admin(df):
             lote = st.text_input("Lote", value=row["LOTE"], key=f"lote_{i}")
             stock = st.number_input("Stock", value=int(row["STOCK"]), key=f"stock_{i}")
             
-            # Manejo de fecha de caducidad
-            try:
-                caducidad_fecha = pd.to_datetime(row["CADUCIDAD"], errors="coerce").date()
-                if pd.isna(caducidad_fecha):
-                    caducidad_fecha = datetime.today().date()
-            except Exception as e:
-                caducidad_fecha = datetime.today().date()
-
+            # Mostrar y editar la fecha de caducidad con formato DD/MM/YYYY
+            caducidad_fecha = pd.to_datetime(row["CADUCIDAD"], errors="coerce").date()
             caducidad = st.date_input("Caducidad", value=caducidad_fecha, key=f"caducidad_{i}")
 
             col1, col2 = st.columns(2)
@@ -115,16 +111,17 @@ def vista_admin(df):
                 if st.button("Guardar cambios", key=f"guardar_{i}"):
                     df.at[i, "LOTE"] = lote
                     df.at[i, "STOCK"] = stock
-                    df.at[i, "CADUCIDAD"] = caducidad.strftime("%d-%m-%Y")
+                    df.at[i, "CADUCIDAD"] = caducidad.strftime("%Y-%m-%d")
                     guardar_datos(df)
                     st.success("Cambios guardados.")
-                    st.experimental_rerun()
+                    return  # Evitar el uso de st.experimental_rerun()
+
             with col2:
                 if st.button("Eliminar producto", key=f"eliminar_{i}"):
                     df = df.drop(i).reset_index(drop=True)
                     guardar_datos(df)
                     st.warning("Producto eliminado.")
-                    st.experimental_rerun()
+                    return  # Evitar el uso de st.experimental_rerun()
 
 # Revisión y manejo de estado de sesión
 if "admin" not in st.session_state:
@@ -141,4 +138,3 @@ if st.session_state["admin"]:
 else:
     df = cargar_datos()  # Cargar los datos para la vista de inventario
     vista_inventario(df)
-
