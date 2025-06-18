@@ -71,7 +71,10 @@ def vista_admin(df):
             nuevo["CATEGORIA"] = st.text_input("Categoría")
             nuevo["UNM"] = st.text_input("Unidad de medida")
             nuevo["LOTE"] = st.text_input("Lote")
+            
+            # Convertir y manejar la fecha de caducidad
             nuevo["CADUCIDAD"] = st.date_input("Caducidad").strftime("%Y-%m-%d")
+            
             nuevo["STOCK"] = st.number_input("Stock", min_value=0, step=1)
 
             submitted = st.form_submit_button("Agregar")
@@ -90,7 +93,16 @@ def vista_admin(df):
         with st.expander(row['PRODUCTO']):
             lote = st.text_input("Lote", value=row["LOTE"], key=f"lote_{i}")
             stock = st.number_input("Stock", value=int(row["STOCK"]), key=f"stock_{i}")
-            caducidad = st.date_input("Caducidad", value=datetime.strptime(row["CADUCIDAD"], "%Y-%m-%d"), key=f"caducidad_{i}")
+            
+            # Convertir fecha y manejar errores
+            try:
+                caducidad_fecha = pd.to_datetime(row["CADUCIDAD"], errors="coerce").date()  # Usar pd.to_datetime para manejar diferentes formatos
+                if pd.isna(caducidad_fecha):  # Si la conversión falla, asignamos la fecha actual
+                    caducidad_fecha = datetime.today().date()
+            except Exception as e:
+                caducidad_fecha = datetime.today().date()  # Fallback en caso de error en la conversión
+
+            caducidad = st.date_input("Caducidad", value=caducidad_fecha, key=f"caducidad_{i}")
 
             col1, col2 = st.columns(2)
             with col1:
@@ -113,9 +125,9 @@ if "admin" not in st.session_state:
     st.session_state["admin"] = False
 
 df = cargar_datos()
-vista_inventario(df)
 
-if not st.session_state["admin"]:
-    login()
-else:
+# Mostrar vista según el estado de sesión
+if st.session_state["admin"]:
     vista_admin(df)
+else:
+    vista_inventario(df)
