@@ -7,6 +7,7 @@ from datetime import datetime, date
 DATA_FILE = "inventario.json"
 st.set_page_config(page_title="Inventario La Villa", layout="wide")
 
+# Cargar los datos desde el archivo JSON
 def cargar_datos():
     if not os.path.exists(DATA_FILE):
         return pd.DataFrame(columns=["PRODUCTO","PROVEEDOR","ACTIVO","CATEGORIA","UNM","LOTE","CADUCIDAD","STOCK"])
@@ -14,10 +15,12 @@ def cargar_datos():
         data = json.load(f)
     return pd.DataFrame(data)
 
+# Guardar los datos en el archivo JSON
 def guardar_datos(df):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(df.to_dict(orient="records"), f, indent=4, ensure_ascii=False)
 
+# Función para iniciar sesión
 def login():
     with st.sidebar:
         st.subheader("🔒 Administrador")
@@ -25,18 +28,20 @@ def login():
         clave = st.text_input("Contraseña", type="password")
         if st.button("Ingresar"):
             if usuario == "YHUERTA" and clave == "183":
-                st.session_state["admin"] = True
+                st.session_state["admin"] = True  # Marcar al usuario como administrador
                 st.success("Acceso concedido")
             else:
                 st.error("Credenciales incorrectas")
 
+# Función para comprobar si un producto está caducado
 def esta_caducado(fecha_str):
     try:
-        fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-        return fecha < date.today()
+        fecha = pd.to_datetime(fecha_str, errors="coerce").date()  # Convertir a tipo de dato fecha
+        return fecha < date.today()  # Comparar si es menor que la fecha actual
     except:
         return False
 
+# Vista de inventario para el usuario normal
 def vista_inventario(df):
     st.title("📦 Inventario General - Almacén La Villa")
 
@@ -53,12 +58,13 @@ def vista_inventario(df):
         if row["STOCK"] == 0:
             return ['background-color: red; color: white'] * len(row)
         elif esta_caducado(row["CADUCIDAD"]):
-            return ['color: red'] * len(row)
+            return ['color: red'] * len(row)  # Resaltar la fila si está caducada
         else:
             return [''] * len(row)
 
     st.dataframe(df.style.apply(destacar_fila, axis=1), use_container_width=True)
 
+# Vista de administración de productos para el administrador
 def vista_admin(df):
     st.subheader("🛠️ Administración de Productos")
 
@@ -72,8 +78,8 @@ def vista_admin(df):
             nuevo["UNM"] = st.text_input("Unidad de medida")
             nuevo["LOTE"] = st.text_input("Lote")
             
-            # Convertir y manejar la fecha de caducidad
-            nuevo["CADUCIDAD"] = st.date_input("Caducidad").strftime("%Y-%m-%d")
+            # Campo de fecha de caducidad
+            nuevo["CADUCIDAD"] = st.date_input("Caducidad").strftime("%d-%m-%Y")
             
             nuevo["STOCK"] = st.number_input("Stock", min_value=0, step=1)
 
@@ -94,13 +100,13 @@ def vista_admin(df):
             lote = st.text_input("Lote", value=row["LOTE"], key=f"lote_{i}")
             stock = st.number_input("Stock", value=int(row["STOCK"]), key=f"stock_{i}")
             
-            # Convertir fecha y manejar errores
+            # Manejo de fecha de caducidad
             try:
-                caducidad_fecha = pd.to_datetime(row["CADUCIDAD"], errors="coerce").date()  # Usar pd.to_datetime para manejar diferentes formatos
-                if pd.isna(caducidad_fecha):  # Si la conversión falla, asignamos la fecha actual
+                caducidad_fecha = pd.to_datetime(row["CADUCIDAD"], errors="coerce").date()
+                if pd.isna(caducidad_fecha):
                     caducidad_fecha = datetime.today().date()
             except Exception as e:
-                caducidad_fecha = datetime.today().date()  # Fallback en caso de error en la conversión
+                caducidad_fecha = datetime.today().date()
 
             caducidad = st.date_input("Caducidad", value=caducidad_fecha, key=f"caducidad_{i}")
 
@@ -109,7 +115,7 @@ def vista_admin(df):
                 if st.button("Guardar cambios", key=f"guardar_{i}"):
                     df.at[i, "LOTE"] = lote
                     df.at[i, "STOCK"] = stock
-                    df.at[i, "CADUCIDAD"] = caducidad.strftime("%Y-%m-%d")
+                    df.at[i, "CADUCIDAD"] = caducidad.strftime("%d-%m-%Y")
                     guardar_datos(df)
                     st.success("Cambios guardados.")
                     st.experimental_rerun()
@@ -120,14 +126,19 @@ def vista_admin(df):
                     st.warning("Producto eliminado.")
                     st.experimental_rerun()
 
-# Inicialización
+# Revisión y manejo de estado de sesión
 if "admin" not in st.session_state:
     st.session_state["admin"] = False
 
-df = cargar_datos()
+# Verificar si el usuario está logueado o no
+if not st.session_state["admin"]:
+    login()  # Si no está logueado, mostrar el formulario de login
 
-# Mostrar vista según el estado de sesión
+# Mostrar las vistas de acuerdo con el estado de sesión
 if st.session_state["admin"]:
+    df = cargar_datos()  # Cargar los datos solo si está logueado
     vista_admin(df)
 else:
+    df = cargar_datos()  # Cargar los datos para la vista de inventario
     vista_inventario(df)
+
