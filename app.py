@@ -2,18 +2,19 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, date
 
-EXCEL_PATH = "C:/Users/USER/OneDrive/Desktop/ALMACEN NO ABRIR/almacen.xlsx"
+# Ruta local del archivo Excel (ajustada a tu escritorio)
+EXCEL_PATH = "C:/Users/USER/OneDrive/Desktop/almacen.xlsx"
 
 st.set_page_config(page_title="Inventario La Villa", layout="wide")
 
-# Leer datos directamente desde el Excel
+# Leer los datos desde el Excel
 def cargar_datos():
     df = pd.read_excel(EXCEL_PATH, sheet_name="CODIFICACION", usecols="A:J", header=None, skiprows=1)
     df.columns = ["CODIGO", "PRODUCTO", "PROVEEDOR", "ACTIVO", "CATEGORIA", "UNM", "?", "CADUCIDAD", "STOCK", "LOTE"]
     df = df[["PRODUCTO", "PROVEEDOR", "ACTIVO", "CATEGORIA", "UNM", "LOTE", "CADUCIDAD", "STOCK"]]
     return df
 
-# Función para login de administrador
+# Login del administrador
 def login():
     with st.sidebar:
         st.subheader("🔒 Administrador")
@@ -26,7 +27,7 @@ def login():
             else:
                 st.error("Credenciales incorrectas")
 
-# Verificar si está caducado
+# Verificación de productos caducados
 def esta_caducado(fecha_str):
     try:
         fecha = pd.to_datetime(fecha_str, errors="coerce").date()
@@ -34,7 +35,7 @@ def esta_caducado(fecha_str):
     except:
         return False
 
-# Vista para usuarios normales
+# Vista para consulta
 def vista_inventario(df):
     st.title("📦 Inventario General - Almacén La Villa")
 
@@ -57,12 +58,10 @@ def vista_inventario(df):
 
     st.dataframe(df.style.apply(destacar_fila, axis=1), use_container_width=True)
 
-# Vista de administración (solo lectura en esta versión)
+# Vista para administrador (solo visual en esta versión)
 def vista_admin(df):
     st.subheader("🛠️ Vista de administrador")
-
-    st.markdown("Los datos se están leyendo directamente desde el archivo Excel. Si necesitas editar, hazlo desde el archivo original en tu PC.")
-
+    st.markdown("Los datos se están leyendo directamente desde el archivo Excel.")
     st.dataframe(df, use_container_width=True)
 
 # Control de sesión
@@ -78,3 +77,4 @@ if st.session_state["admin"]:
     vista_admin(df)
 else:
     vista_inventario(df)
+
